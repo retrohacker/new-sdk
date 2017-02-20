@@ -6,7 +6,7 @@ cli: src/cli/main.go
 packager: src/packager/main.go
 	go build -o packager src/packager/main.go
 
-sdk.tar.gz:
+sdk.tar.gz: data/
 	cd data && tar -czf ../sdk.tar.gz ./
 
 sdk: sdk.tar.gz cli packager
@@ -15,5 +15,8 @@ sdk: sdk.tar.gz cli packager
 
 clean:
 	rm -f cli packager sdk.tar.gz sdk
+
+deps:
+	go get src/github.com/kardianos/osext
 
 .PHONY: clean

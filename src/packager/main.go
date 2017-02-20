@@ -1,6 +1,7 @@
 package main
 
 import (
+  "crypto/sha512"
 	"io"
 	"log"
 	"os"
@@ -14,6 +15,7 @@ func main() {
 	var (
 		tarball    *os.File
 		executable *os.File
+		mBytes     []byte
 		marker     []byte
 		err        error
 		bytes      []byte
@@ -38,9 +40,13 @@ func main() {
 
 	// Create a marker in the file so we can find the beginning of the tarball
 	// when unpacking
-	marker = make([]byte, len(markerString))
-	copy(marker[:], markerString)
-	log.Printf("Using marker: %s", marker)
+	mBytes = make([]byte, len(markerString))
+	copy(mBytes[:], markerString)
+  mHash := sha512.Sum512(mBytes)
+  marker = make([]byte, len(mHash))
+  copy(marker[:], mHash[:])
+
+	log.Printf("Using marker: %v", marker)
 	nw, err = executable.Write(marker)
 	if err != nil {
 		log.Print("Error: ", err)
