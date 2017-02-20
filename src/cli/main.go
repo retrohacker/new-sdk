@@ -1,109 +1,96 @@
 package main
 
 import (
-  "github.com/kardianos/osext"
-  "crypto/sha512"
-	"archive/tar"
-	"compress/gzip"
-  "log"
-	"os"
-  "io"
+  "./cmd"
+  "./logger"
+  "os"
 )
 
 func main() {
-  defer os.Exit(0)
-  unpack()
+  if !checkDir() {
+    logger.Fatal("Directory not initalized!");
+  }
+
+  // First a quick heuristic to see if we have expanded our files into the CWD
+  err := cmd.RootCmd.Execute()
+  if err != nil {
+    logger.Fatal(err)
+  }
 }
 
-func unpack() {
-  // Our marker string indicates when we have reached the beginning of the tar
-  // archive in our file
-	const markerString = "StorjSDKBinaryPackedDataMarker"
+func checkDir() bool {
   var (
-    binaryPath string
-    f *os.File
     err error
-		mBytes     []byte
-		marker     []byte
-		bytes      []byte
-    markerIndex int
-		tarReader  *tar.Reader
-		header     *tar.Header
-		gzipReader *gzip.Reader
+    cwd string
+    dir *os.File
+    files []os.FileInfo
   )
 
-  // Get a reference to the executable and open it
-  binaryPath, err = osext.Executable()
-
+  cwd, err = os.Getwd()
   if err != nil {
-    log.Println("Unable to resolve path to binary file!")
-    log.Fatal(err)
+    logger.Error(err)
+    logger.Fatal("Unable to find current working directory")
   }
 
-  f, err = os.OpenFile(binaryPath, os.O_RDONLY, 0755)
-
+  dir, err = os.Open(cwd)
   if err != nil {
-    log.Println("Unable to open executable!")
-    log.Printf("Resolved executable to: %s", binaryPath)
-    log.Fatal(err)
+    logger.Error(err)
+    logger.Fatal("Unable to open working directory: ", cwd)
   }
 
-  // Begin looking for our marker
-	mBytes = make([]byte, len(markerString))
-	copy(mBytes[:], markerString)
-  mHash := sha512.Sum512(mBytes)
-  marker = make([]byte, len(mHash))
-  copy(marker[:], mHash[:])
-  markerIndex = 0
+  files, err = dir.Readdir(100)
+  if err != nil {
+    logger.Error(err)
+    logger.Fatal("Unable to read working directory: ", cwd)
+  }
 
-  index := 1
-  _, err = f.Read(bytes)
-  bytes = make([]byte, 1)
-  Reader: for err == nil {
-    // Iterate through each byte of the file looking for our marker
-    for _, value := range bytes {
-      if value != marker[markerIndex] {
-        markerIndex = -1
-      }
-      markerIndex += 1
-      if markerIndex == len(marker) {
-        break Reader
+  // We use a quick heuristic to see if we have already expanded the SDK files
+  // If we see each of these files in the directory and they are of the correct
+  // type, we assume the sdk has expanded
+  expectedFiles := []string{
+    "docker-compose.yml",
+    "bridge",
+    "cli",
+    "vpn",
+    "complex",
+    "mongodb",
+    "share",
+  }
+
+  // true = dir, false = file
+  expectedTypes := []bool{
+    false, // docker-compose.yml
+    true, // bridge
+    true, // cli
+    true, // vpn
+    true, // complex
+    true, // mongodb
+    true, // share
+  }
+
+  expectedSeen := []bool{
+    false, // docker-compose.yml
+    false, // bridge
+    false, // cli
+    false, // vpn
+    false, // complex
+    false, // mongodb
+    false, // share
+  }
+
+  for _, file := range files {
+    for index, name := range expectedFiles {
+      if name == file.Name() && expectedTypes[index] == file.IsDir() {
+        expectedSeen[index] = true
       }
     }
-    index += 1
-    if index % 1000 == 0 {
-      log.Println("Read %v bytes", index)
+  }
+
+  for _, seen := range expectedSeen {
+    if !seen {
+      return false
     }
-    _, err = f.Read(bytes)
   }
 
-  if err != io.EOF && err != nil {
-    log.Println("Failed to parse executable!")
-    log.Fatal(err)
-  }
-
-  if markerIndex != len(marker) {
-    log.Fatal("Did not find marker!")
-  }
-
-  log.Println("Found marker at position: ", index)
-
-	gzipReader, err = gzip.NewReader(f)
-	if err != nil {
-		log.Fatal("Unable to parse gzip:", err)
-		os.Exit(1)
-	}
-
-	tarReader = tar.NewReader(gzipReader)
-	header, err = tarReader.Next()
-	for ; err == nil; header, err = tarReader.Next() {
-		log.Println("Header:", header.Name)
-	}
-
-	if err != io.EOF {
-		log.Fatal("Encountered error while unpacking:", err)
-		os.Exit(1)
-	}
-
-	os.Exit(0)
+  return true
 }

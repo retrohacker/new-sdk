@@ -1,6 +1,6 @@
 all: sdk
 
-cli: src/cli/main.go
+cli: src/cli/main.go src/cli/cmd/*.go src/cli/logger/*.go
 	go build -o cli src/cli/main.go
 
 packager: src/packager/main.go
@@ -17,6 +17,8 @@ clean:
 	rm -f cli packager sdk.tar.gz sdk
 
 deps:
-	go get src/github.com/kardianos/osext
+	go get github.com/kardianos/osext
+	go get github.com/spf13/cobra/cobra
+	go get github.com/fatih/color
 
-.PHONY: clean
+.PHONY: clean deps
