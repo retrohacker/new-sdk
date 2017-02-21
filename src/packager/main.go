@@ -1,7 +1,7 @@
 package main
 
 import (
-  "crypto/sha512"
+	"crypto/sha512"
 	"io"
 	"log"
 	"os"
@@ -42,9 +42,9 @@ func main() {
 	// when unpacking
 	mBytes = make([]byte, len(markerString))
 	copy(mBytes[:], markerString)
-  mHash := sha512.Sum512(mBytes)
-  marker = make([]byte, len(mHash))
-  copy(marker[:], mHash[:])
+	mHash := sha512.Sum512(mBytes)
+	marker = make([]byte, len(mHash))
+	copy(marker[:], mHash[:])
 
 	log.Printf("Using marker: %v", marker)
 	nw, err = executable.Write(marker)

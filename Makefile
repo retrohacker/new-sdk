@@ -20,5 +20,7 @@ deps:
 	go get github.com/kardianos/osext
 	go get github.com/spf13/cobra/cobra
 	go get github.com/fatih/color
+	go get github.com/alecaivazis/survey
+	go get github.com/gosuri/uiprogress
 
 .PHONY: clean deps
